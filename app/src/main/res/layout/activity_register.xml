@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".Register">
+    android:background="@android:color/transparent" >
+
+    <Button
+        android:id="@+id/bt_Send"
+        android:layout_width="130dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="15dp"
+        android:enabled="false"
+        android:text="Send"
+        android:textColor="#A9A9A9"
+        app:layout_constraintStart_toEndOf="@+id/reg_camera_viewer"
+        app:layout_constraintTop_toBottomOf="@+id/editTextPhone" />
+
+    <Button
+        android:id="@+id/bt_Cancel"
+        android:layout_width="130dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="270dp"
+        android:layout_marginTop="15dp"
+        android:text="Cancel"
+        app:layout_constraintStart_toEndOf="@+id/reg_camera_viewer"
+        app:layout_constraintTop_toBottomOf="@+id/editTextPhone" />
+
+    <org.opencv.android.JavaCameraView
+        android:id="@+id/reg_camera_viewer"
+        android:layout_width="180dp"
+        android:layout_height="150dp"
+        android:layout_marginStart="50dp"
+        android:layout_marginTop="50dp"
+        app:camera_id="front"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/editTextName"
+        android:layout_width="300dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="50dp"
+        android:ems="10"
+        android:hint="Name"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toEndOf="@+id/reg_camera_viewer"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/editTextEmail"
+        android:layout_width="300dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:hint="Email@email.com"
+        android:inputType="textEmailAddress"
+        app:layout_constraintStart_toEndOf="@+id/reg_camera_viewer"
+        app:layout_constraintTop_toBottomOf="@+id/editTextName" />
+
+    <EditText
+        android:id="@+id/editTextPhone"
+        android:layout_width="300dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:hint="Phone Number"
+        android:inputType="phone"
+        app:layout_constraintStart_toEndOf="@+id/reg_camera_viewer"
+        app:layout_constraintTop_toBottomOf="@+id/editTextEmail" />
+
+    <ProgressBar
+        android:id="@+id/Load_bar"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="48dp"
+        android:layout_marginTop="64dp"
+        android:outlineAmbientShadowColor="@android:color/holo_blue_dark"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/reg_camera_viewer" />
+
+    <TextView
+        android:id="@+id/Server_log"
+        android:visibility="invisible"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="92dp"
+        app:layout_constraintStart_toEndOf="@+id/Load_bar"
+        app:layout_constraintTop_toBottomOf="@+id/reg_camera_viewer" />
+
+
+
+</android.support.constraint.ConstraintLayout>

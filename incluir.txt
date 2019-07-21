@@ -1,0 +1,18 @@
+
+
+
+
+
+
+
+
+
+
+            case REQ_CODE_SPEECH_OUTPUT: {
+                if ((resultCode == RESULT_OK) && (null!= data)){
+                    ArrayList<String> voiceInText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    vozTexto.setText(voiceInText.get(0));
+                    Toast.makeText(getApplicationContext(),"Comando = "+vozTexto.toString(),Toast.LENGTH_LONG).show();
+                }
+                break;
+	}
