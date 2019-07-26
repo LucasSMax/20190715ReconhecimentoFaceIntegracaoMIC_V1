@@ -19,8 +19,9 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".Register"></activity>
-        <activity android:name=".MainActivity">
+        <activity android:name=".Register" android:screenOrientation="landscape"></activity>
+        <activity android:name=".MainActivity"
+            android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

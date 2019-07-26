@@ -7,6 +7,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.drawable.AnimationDrawable;
 import android.os.Handler;
 import android.os.Message;
 import android.speech.RecognizerIntent;
@@ -17,10 +18,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,6 +38,7 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -73,6 +77,25 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private MatOfRect faces = new MatOfRect();
     private CascadeClassifier cascadeFace;
     private JavaCameraView javaCameraView;
+
+    //Eye Variables//
+    //Screen Size
+    DisplayMetrics displayMetrics = new DisplayMetrics();
+
+    //Animation
+    private AnimationDrawable palpebraAnim;
+
+    //Images
+    private ImageView ivPalpebra;
+    private ImageView ivPupila;
+
+    //Eye Position
+    private float pupilaX;
+    private float pupilaY;
+
+    //Target Position
+    private float targetX;
+    private float targetY;
 
     static
     {
@@ -215,6 +238,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 {
                     Toast.makeText(getApplicationContext(),"Caracteristica não suportada", Toast.LENGTH_SHORT).show();
                 }
+
+                //Eye Initialization//
+                ivPalpebra = findViewById(R.id.ivPalpebra);
+                ivPupila = findViewById(R.id.ivPupila);
+                ivPalpebra.setBackgroundResource(R.drawable.palpebra_anim);
+
+                //Get Screen Size
+                getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+
+                //Start Blinking Animation
+                BlinkRoutine();
             }
         });
 
@@ -348,7 +382,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
                     ////////comandos manuais/////////
 
-                    if(comandoVoz.contains("what is my name") || comandoVoz.equals("who am I")) // comando usado para reconhecimento
+                    if(comandoVoz.contains("what is my name") || comandoVoz.equals("who am I") || comandoVoz.contains("what's my name")) // comando usado para reconhecimento
                         recognize = true;
 
                     else if(comandoVoz.contains("register"))
@@ -412,7 +446,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         comando = "a\r\n";
                     }
 
-                    connectedThread.enviar(comando);
+                    //connectedThread.enviar(comando);
                     Toast.makeText(getApplicationContext(),"Comando = "+comando,Toast.LENGTH_LONG).show();
                 }
                 ////////comandos manuais/////////
@@ -465,10 +499,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             cascadeFace.detectMultiScale(mGray, faces, 1.1,2,2,
                     new Size(absoluteFaceSize, absoluteFaceSize), new Size());
         }
-        for(Rect rect: faces.toArray())
+        Rect[] faceArray = faces.toArray();
+        for(int i = 0; i < faceArray.length; i++)
         {
-            Core.rectangle(mRgba, rect.tl(), rect.br(), new Scalar(0, 255, 0, 255), 3);
+            Core.rectangle(mRgba, faceArray[i].tl(), faceArray[i].br(), new Scalar(0, 255, 0, 255), 3);
         }
+
+        LookAtBiggest(faceArray);
 
         if(recognize)
         {
@@ -594,6 +631,78 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             } catch (IOException e) { }
         }
 
+    }
+
+    public void BlinkRoutine()
+    {
+        palpebraAnim = (AnimationDrawable) ivPalpebra.getBackground();
+        palpebraAnim.start();
+    }
+
+    public void LookAtBiggest(Rect[] mFaces)
+    {
+        if(mFaces.length == 0)
+        {
+            return;
+        }
+        int target = 0;
+        float area = 0;
+        for(int i = 0; i < mFaces.length; i++)
+        {
+            if(mFaces[i].height * mFaces[i].width > area)
+            {
+                target = i;
+                area = mFaces[i].height * mFaces[i].width;
+            }
+        }
+        targetX = mFaces[target].x + mFaces[target].width;
+        targetY = mFaces[target].y + mFaces[target].height;
+        MoveEye(targetX, targetY);
+    }
+
+    public void MoveEye(float _x, float _y)
+    {
+        //Because of the eye image size, it should start positioned at the screen's 0, 0 point
+        //It'll move 100 pixels max to either side depending on where it needs to look in screen coordinates
+
+        //Local Variables
+        float inMinX, inMaxX; //X coordinates for comparison
+        float inMinY, inMaxY; //Y coordinates for comparison
+
+        //X coordinates
+        if(_x > displayMetrics.widthPixels / 2)
+        {
+            //Move right
+            inMinX = displayMetrics.widthPixels / 2;
+            inMaxX = displayMetrics.widthPixels;
+            pupilaX = ((_x - inMinX) / (inMaxX - inMinX)) * 100;
+        }
+        else if(_x < displayMetrics.widthPixels / 2)
+        {
+            //Move left
+            inMaxX = 0;
+            inMinX = displayMetrics.widthPixels / 2;
+            pupilaX = ((_x - inMinX) * -1 / (inMaxX - inMinX)) * 100;
+        }
+
+        //Y coordinates
+        if(_y > displayMetrics.heightPixels / 2)
+        {
+            //Move Down
+            inMinY = displayMetrics.heightPixels / 2;
+            inMaxY = displayMetrics.heightPixels;
+            pupilaY = ((_y - inMinY) / (inMaxY - inMinY)) * 100;
+        }
+        else if(_y < displayMetrics.heightPixels / 2)
+        {
+            //Move Up
+            inMaxY = 0;
+            inMinY = displayMetrics.heightPixels / 2;
+            pupilaY = ((_y - inMinY) * -1 / (inMaxY - inMinY)) * 100;
+        }
+
+        ivPupila.setTranslationX(-pupilaX); //Moves eye in X
+        ivPupila.setTranslationY(pupilaY); //Moves eye in Y
     }
 
 
