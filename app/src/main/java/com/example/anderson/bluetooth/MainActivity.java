@@ -97,6 +97,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private float targetX;
     private float targetY;
 
+    //RAT
+    private int x, y, centerx, centery;
+
     static
     {
         System.loadLibrary("opencv_java");
@@ -512,6 +515,90 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             if(!faces.empty())
             {
                 Rect rect = faces.toArray()[0];
+
+                centerx = (rect.width)/2 + rect.x;
+                centery = (rect.height)/2 + rect.y;
+                x = mRgba.width()/3;
+                y = mRgba.height()/3;
+
+                if(centerx < x){
+                    if(centery < y){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("0\r\n");
+                            }
+                        });
+                    }
+                    else if(centery > y*2){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("6\r\n");
+                            }
+                        });
+                    }
+                    else{
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("3\r\n");
+                            }
+                        });
+                    }
+                }
+                else if(centerx > x*2){
+                    if(centery < y){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("2\r\n");
+                            }
+                        });
+                    }
+                    else if(centery > 2*y){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("8\r\n");
+                            }
+                        });
+                    }
+                    else{
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("5\r\n");
+                            }
+                        });
+                    }
+                }
+                else{
+                    if(centery < y){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("1\r\n");
+                            }
+                        });
+                    }
+                    else if(centery > 2*y){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("7\r\n");
+                            }
+                        });
+                    }
+                    else{
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                connectedThread.enviar("4\r\n");
+                            }
+                        });
+                    }
+                }
 
                 mCrop = new Mat(mRgba, rect);
                 Imgproc.cvtColor(mCrop, mCrop, Imgproc.COLOR_RGBA2RGB);
