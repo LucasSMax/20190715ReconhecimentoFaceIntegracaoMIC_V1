@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Original file: /home/max/AndroidStudioProjects/20190715ReconhecimentoFaceIntegracaoMIC/openCVLibrary2411/src/main/aidl/org/opencv/engine/OpenCVEngineInterface.aidl
+ * Original file: /home/max/AndroidStudioProjects/v2/20190715ReconhecimentoFaceIntegracaoMIC/openCVLibrary2411/src/main/aidl/org/opencv/engine/OpenCVEngineInterface.aidl
  */
 package org.opencv.engine;
 /**
