@@ -1,27 +1,15 @@
-/*
-
-
-*?
- */
-
-
-
 package com.example.anderson.bluetooth;
 
 import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.AnimationDrawable;
-import android.os.Handler;
-import android.os.Message;
 import android.speech.RecognizerIntent;
-import android.speech.tts.TextToSpeech;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -30,9 +18,10 @@ import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
 import android.util.Base64;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -62,10 +51,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -84,18 +70,18 @@ import retrofit2.Call;
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, AIListener {
 
 
-
-    Button btnConexao, btnDescobrir;
     private TextView vozTexto;
     private String resposta = "dialog";
 
     private static final int SOLICITA_ATIVACAO = 1;
     private static final int SOLICITA_CONEXAO = 2;
     private static final int SOLICITA_DESCOBERTA_BT = 3;
-    private static final int MESSAGE_READ = 4;
+    private final int REQ_CODE_SPEECH_OUTPUT = 143;
+    private final int BT_BLUETOOTH = 4;
+
     private static Mat mRgba, mGray, mCrop;
     private int absoluteFaceSize;
-    private boolean recognize = false;
+    private boolean recognize = false, falou = false;
     private static String txtclassifica;
     private File mCascadeFile;
     private Bitmap bmp = null;
@@ -104,9 +90,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private JavaCameraView javaCameraView;
     private Pessoa pessoa = new Pessoa();
 
+    private ImageView imgPalpebra;
+    private Speech speech;
+
     private AIService aiService;
     private static final int REQUEST_INTERNET = 200;
     private static final int RECORD_AUDIO_PERMISSION = 1;
+
 
     //Eye Variables//
     //Screen Size
@@ -153,249 +143,67 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
     };
 
-    ConnectedThread connectedThread;
-
-    Handler mHandler;
-    StringBuilder dadosBluetooth = new StringBuilder();
+    
 
     BluetoothAdapter meuBluetoothAdapter = null;
     BluetoothDevice meuDevice = null;
     BluetoothSocket meuSocket = null;
 
+    ConnectedThread connectedThread;
+    
     boolean conexao = false, service;
 
     private static String MAC = null;
 
     UUID MEU_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
     //voz
-    private Button openMic;
-    private final int REQ_CODE_SPEECH_OUTPUT = 143;
+
+
     String comando, comandoVoz;
     //voz
-    public TextToSpeech toSpeech;
+
     int result;
     //textoVoz
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
-        //setConte
 
-        btnConexao = (Button)findViewById(R.id.btnConexao);
-        btnDescobrir = (Button)findViewById(R.id.btnDescobrir);
-        openMic = (Button)findViewById(R.id.btnVoz);
+        ivPalpebra = findViewById(R.id.ivPalpebra);
+        ivPupila = findViewById(R.id.ivPupila);
         vozTexto = (TextView)findViewById(R.id.textView);
-
-
-        haarCascadeHandler(); //Carrega o arquivo para haar cascade
- //       openCvHandler();
-
         javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
+        speech = new Speech(this);
+
         javaCameraView.setVisibility(SurfaceView.VISIBLE);
         javaCameraView.setCvCameraViewListener(this);
 
         meuBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (meuBluetoothAdapter == null) {
-            // Device does not support Bluetooth
+        haarCascadeHandler();
+
+        if (meuBluetoothAdapter.equals(null))
             Toast.makeText(getApplicationContext(),"Seu Dispositivo não possui Bluetooth",Toast.LENGTH_LONG).show();
-        } else if(!((BluetoothAdapter) meuBluetoothAdapter).isEnabled()){
-                    Intent ativaBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    startActivityForResult(ativaBluetooth, SOLICITA_ATIVACAO);
 
-                }
-        btnConexao.setOnClickListener(new View.OnClickListener() {
+        else if(!((BluetoothAdapter) meuBluetoothAdapter).isEnabled())
+        {
+            Intent ativaBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(ativaBluetooth, SOLICITA_ATIVACAO);
+        }
+
+        ivPalpebra.setOnTouchListener(new OnTouchSwipeListener(MainActivity.this)
+        {
             @Override
-            public void onClick(View view) {
-                if (conexao){
-                    //desconectar
-                    try{
-                        meuSocket.close();
-                        conexao = false;
-                        btnConexao.setText("CONECTAR");
-                        Toast.makeText(getApplicationContext(),"Bluetooth foi Desconectado!",Toast.LENGTH_LONG).show();
-                    } catch (IOException erro){
-                        Toast.makeText(getApplicationContext(),"Ocorreu um erro: "+erro,Toast.LENGTH_LONG).show();
-                    }
-                } else {
-                    //conectar
-                    Intent abreLista=new Intent(MainActivity.this,ListaDispositivos.class);
-                    startActivityForResult(abreLista,SOLICITA_CONEXAO);
-                }
-
+            public void onSwipeRight() {
+                startActivityForResult(new Intent(MainActivity.this, Menu.class), BT_BLUETOOTH);
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_left);
             }
         });
-
-        btnDescobrir.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View view) {
-                if (!meuBluetoothAdapter.isDiscovering()){
-                    Toast.makeText(getApplicationContext(),"Descobrindo Dispositivos!",Toast.LENGTH_LONG).show();
-                    Intent listarNovosDevices = new Intent(MainActivity.this, DescobrindoDispositivos.class);
-                    startActivityForResult(listarNovosDevices,SOLICITA_DESCOBERTA_BT);
-                }
-            }
-        });
-
-        openMic.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                //if (conexao){
-                if(true){
-                    btnVoz();
-
-                    //connectedThread.enviar("A\r\n");
-                    //connectedThread.enviar("a\r\n");
-                } else{
-
-                    Toast.makeText(getApplicationContext(),"Bluetooth não está conectado!",Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-
-        toSpeech=new TextToSpeech(MainActivity.this, new TextToSpeech.OnInitListener(){
-            @Override
-            public void onInit(int status) {
-                if (status==TextToSpeech.SUCCESS)
-                {
-                    result=toSpeech.setLanguage(Locale.getDefault());
-                    //toSpeech.setPitch(1f);
-                    //toSpeech.setSpeechRate(2f);
-                    /*Voice voiceobj = new Voice("it-it-x-kda#male_2-local",
-                            Locale.getDefault(), 1, 1, false, null);
-
-                    toSpeech.setVoice(voiceobj);*/
-
-                }
-                else
-                {
-                    Toast.makeText(getApplicationContext(),"Caracteristica não suportada", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-
-//        mHandler = new Handler(){
-//            @Override
-//            public void handleMessage(Message msg) {
-//                if (msg.what==MESSAGE_READ){
-//
-////                    byte [] readBuf = (byte []) msg.obj;
-////                    String recebidos = new String(readBuf, StandardCharsets.UTF_8);
-//                    int recebidos = (int) msg.obj;
-//
-//
-//                    dadosBluetooth.append((char) recebidos);
-//                    //Toast.makeText(getApplicationContext(),"Mensagem recebida",Toast.LENGTH_LONG).show();
-//                    //int fimInformacao=dadosBluetooth.indexOf("\n");
-//                    int fimInformacao=dadosBluetooth.indexOf("\r");
-//                    if (fimInformacao>0){
-//                        String dadoNumeroMIC = dadosBluetooth.substring(0,fimInformacao);
-//                        Toast.makeText(getApplicationContext(),dadoNumeroMIC,Toast.LENGTH_LONG).show();
-//                        int tamInformacao = dadoNumeroMIC.length();
-//                        if (dadoNumeroMIC.contains("r")){
-//
-//                        //if (dadosBluetooth.charAt(0)!='A'){
-//                            String identMIC = dadosBluetooth.substring(0,tamInformacao);
-//                            Log.d("Recebidos", identMIC);
-//                            ///iniciar escuta do locutor///
-//                            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-//                            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-//                            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-//                            //intent.putExtra(RecognizerIntent.EXTRA_PROMPT,"Hill Speak Now ...");
-//                            //toSpeech.speak("Hello so I can recognize you, please stay at a distance of 50cm.", TextToSpeech.QUEUE_FLUSH,null);
-//                            toSpeech.speak("I am the vision of the future, would you like to dialogue?", TextToSpeech.QUEUE_FLUSH,null);
-//                            Toast.makeText(getApplicationContext(),"Mensagem recebida",Toast.LENGTH_LONG).show();
-//                            try {
-//                                startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
-//                            }
-//                            catch (ActivityNotFoundException tim) {
-//                            //just put an toast if Google mic is not opened
-//                            }
-//                            ///finaliza escuta locutor///
-//
-//
-//                            /*
-//                            if (dadosFinais.contains("L1on")){
-//                                btnLed1.setText("Led 1 LIGADO");
-//                                Log.d("Led1","Ligado");
-//                            }else if (dadosFinais.contains("L1of")){
-//                                btnLed1.setText("Led 1 DESLIGADO");
-//                                Log.d("Led1","Desligado");
-//                            }
-//                            */
-//
-//                        }
-//                        dadosBluetooth.delete(0,dadosBluetooth.length());
-//
-//                    }
-//                }
-//
-//            }
-//        };
-
-        mHandler = new Handler(){
-            @Override
-            public void handleMessage(Message msg) {
-                if (msg.what==MESSAGE_READ){
-                    int recebidos = (int) msg.obj;
-
-
-                    dadosBluetooth.append((char) recebidos);
-
-                    char dadoNumeroMIC = (char) recebidos;
-                    //Toast.makeText(getApplicationContext(),dadoNumeroMIC,Toast.LENGTH_LONG).show();
-
-                    int tamInformacao = 1;
-                    //if (dadoNumeroMIC != '\0'){
-
-                        //if (dadosBluetooth.charAt(0)!='A'){
-                        //String identMIC = dadosBluetooth.substring(0,tamInformacao);
-                        //Log.d("Recebidos", identMIC);
-                        ///iniciar escuta do locutor///
-                        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-                        //intent.putExtra(RecognizerIntent.EXTRA_PROMPT,"Hill Speak Now ...");
-                        //toSpeech.speak("Hello so I can recognize you, please stay at a distance of 50cm.", TextToSpeech.QUEUE_FLUSH,null);
-                        toSpeech.speak("I am the vision of the future", TextToSpeech.QUEUE_FLUSH,null);
-                        while(toSpeech.isSpeaking());
-                        toSpeech.speak("Would you like to dialogue?", TextToSpeech.QUEUE_FLUSH,null);
-                        while(toSpeech.isSpeaking());
-                        //Thread.sleep(3000);
-                        //Toast.makeText(getApplicationContext(),"Mensagem recebida",Toast.LENGTH_LONG).show();
-                        try {
-                            startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
-                        }
-                        catch (ActivityNotFoundException tim) {
-                            //just put an toast if Google mic is not opened
-                        }
-                        ///finaliza escuta locutor///
-
-
-                        /*
-                        if (dadosFinais.contains("L1on")){
-                            btnLed1.setText("Led 1 LIGADO");
-                            Log.d("Led1","Ligado");
-                        }else if (dadosFinais.contains("L1of")){
-                            btnLed1.setText("Led 1 DESLIGADO");
-                            Log.d("Led1","Desligado");
-                        }
-                        */
-
-                    //}
-                    dadosBluetooth.delete(0,dadosBluetooth.length());
-
-
-                }
-
-            }
-        };
 
         //Eye Initialization//
-        ivPalpebra = findViewById(R.id.ivPalpebra);
-        ivPupila = findViewById(R.id.ivPupila);
         ivPalpebra.setBackgroundResource(R.drawable.palpebra_anim);
 
         //Get Screen Size
@@ -406,36 +214,60 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     @Override
-    protected void onDestroy(){
+    protected void onDestroy()
+    {
         super.onDestroy();
-        if (toSpeech!=null)
+        if (speech.getToSpeech()!=null)
         {
-            toSpeech.stop();
-            toSpeech.shutdown();
+            speech.getToSpeech().stop();
+            speech.getToSpeech().shutdown();
         }
         if(javaCameraView!=null)
             javaCameraView.disableView();
     }
 
-    private void btnVoz (){
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT,"Hill Speak Now ...");
-
-        try {
-            startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
-        }
-        catch (ActivityNotFoundException tim) {
-//just put an toast if Google mic is not opened
-        }
-    }
+//    private void btnVoz (){
+//        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+//        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+//        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+//        intent.putExtra(RecognizerIntent.EXTRA_PROMPT,"Hill Speak Now ...");
+//
+//        try {
+//            startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
+//        }
+//        catch (ActivityNotFoundException tim) {
+////just put an toast if Google mic is not opened
+//        }
+//    }
 
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         //super.onActivityResult(requestCode, resultCode, data);
         switch (requestCode){
+            case BT_BLUETOOTH:
+                if (conexao)
+                {
+                    //desconectar
+                    try
+                    {
+                        meuSocket.close();
+                        conexao = false;
+                        Toast.makeText(getApplicationContext(),"Bluetooth foi Desconectado!",Toast.LENGTH_LONG).show();
+                    }
+                    catch (IOException erro)
+                    {
+                        Toast.makeText(getApplicationContext(),"Ocorreu um erro: "+erro,Toast.LENGTH_LONG).show();
+                    }
+                }
+                else
+                {
+                    //conectar
+                    Intent abreLista=new Intent(MainActivity.this,ListaDispositivos.class);
+                    startActivityForResult(abreLista,SOLICITA_CONEXAO);
+                }
+                break;
+
             case SOLICITA_ATIVACAO:
                 if(resultCode== Activity.RESULT_OK){
                     Toast.makeText(getApplicationContext(),"O Bluetooth foi ativado!",Toast.LENGTH_LONG).show();
@@ -456,9 +288,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         Toast.makeText(getApplicationContext(),"Você foi conectado com: "+MAC,Toast.LENGTH_LONG).show();
 
                         conexao = true;
-                        connectedThread = new ConnectedThread(meuSocket);
+                        connectedThread = new ConnectedThread( meuSocket,MainActivity.this);
                         connectedThread.start();
-                        btnConexao.setText("DESCONECTAR");
                         connectedThread.enviar("r");
 
                     } catch (IOException erro){
@@ -487,163 +318,31 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         }
                         else if(comandoVoz.contains("yes"))
                         {
+                            falou = false;
+                            int count = 0;
                             recognize = true;
-
-                            while(true)
-                            {
+                            pessoa.setName("");
+                            //while(true)
+                            //{
                                 if(!pessoa.getName().isEmpty())
                                 {
-                                    if(pessoa.getName().equals("unknow"))
+                                    if(!pessoa.getName().equals("unknow"))
                                     {
-                                        toSpeech.speak("I don't know you", TextToSpeech.QUEUE_FLUSH,null);
-                                        while(toSpeech.isSpeaking());
-                                    }
-                                    else
-                                    {
-                                        toSpeech.speak("Hello " + pessoa.getName() + ", nice to see you.", TextToSpeech.QUEUE_FLUSH,null);
-                                        while(toSpeech.isSpeaking());
+                                        speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
                                         pessoa.setName("");
+                                        falou = true;
+                                        break;
                                     }
-
-                                    break;
                                 }
-
-                            }
+                                else
+                                    recognize = true;
+                            //}
 
                             validateOs();
                         }
 
                         else
                             connectedThread.enviar("r");
-
-
-
-
-//
-//
-//                    Runnable r = new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            while(MainActivity)
-//                            validateOs();
-//                        }
-//                    }
-//                    if (!resposta.contains("see you soon")) {
-//
-//                        try {
-//                            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-//                            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-//                            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-//                            startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
-//                        } catch (ActivityNotFoundException tim) {
-//                            //just put an toast if Google mic is not opened
-//                        }
-//                    }
-//                    else connectedThread.enviar("r");
-                    //connectedThread.enviar("r");
-//                     if(comandoVoz.contains("register"))
-//                        startActivity(new Intent(MainActivity.this, Register.class));
-//                     else{
-//                         recognize = true;
-//                         if(!pessoa.getName().equals(""))
-//                         {
-//                             Toast.makeText(getApplicationContext(),pessoa.getName(),Toast.LENGTH_LONG).show();
-//                             if(comandoVoz.contains("yes")) {
-//                                 final AIConfiguration config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
-//                                         AIConfiguration.SupportedLanguages.English,
-//                                         AIConfiguration.RecognitionEngine.System);
-//
-//                                 aiService = AIService.getService(this, config);
-//                                 aiService.setListener(this);
-//                                 validateOs();
-//
-//                             }
-//
-//                         }
-//
-//                     }
-
-
-                    ///Finalização com variável string das informações do reconhecimento facial
-
-
-                    //DialogFlow inicio
-
-
-
-                    //DialogFlow Fim
-
-
-                    ////////comandos manuais/////////
-
-//                    if(comandoVoz.contains("what is my name") || comandoVoz.equals("who am I")) // comando usado para reconhecimento
-//                        recognize = true;
-//
-//                    else if(comandoVoz.contains("register"))
-//                        startActivity(new Intent(MainActivity.this, Register.class));
-//
-//                    else if (comandoVoz.contains("foward right")) {
-//                        comando = "A\r\n";
-//                    }
-//                    else if (comandoVoz.contains("olho"))
-//                        startActivity(new Intent(MainActivity.this, EyeActivity.class));
-//
-//                    else if (comandoVoz.contains("foward")) {
-//                        comando = "B\r\n";
-//                        toSpeech.speak("Beware the Robot is moving forward, you can use the Stop or Behind",
-//                                TextToSpeech.QUEUE_FLUSH,null,null);
-//                    }
-//
-//                    else if (comandoVoz.contains("foward left")) {
-//                        comando = "C\r\n";
-//                    }
-//
-//                    else if (comandoVoz.contains("left")) {
-//                        comando = "D\r\n";
-//                    }
-//
-//                    else if (comandoVoz.contains("right")) {
-//                        comando = "E\r\n";
-//                    }
-//
-//                    else if (comandoVoz.contains("behind left")) {
-//                        comando = "F\r\n";
-//                    }
-//
-//                    else if (comandoVoz.contains("behind")) {
-//                        comando = "G\r\n";
-//                        toSpeech.speak("Be aware the robot is behind",
-//                                TextToSpeech.QUEUE_FLUSH,null,null);
-//                        toSpeech.speak("We have other modes of movement: clockwise, anticlockwise, in doubt " +
-//                                "send the Stop command", TextToSpeech.QUEUE_FLUSH,null);
-//                    }
-//
-//                    else if (comandoVoz.contains("behind right")) {
-//                        comando = "H\r\n";
-//                    }
-//
-//                    else if (comandoVoz.contains("clockwise")){//)&&(!(comandoVoz.contains("anti")))) {
-//                        comando = "I\r\n";
-//                        toSpeech.speak("If I do not stop, I'll go dizzy.",
-//                                TextToSpeech.QUEUE_FLUSH,null,null);
-//                    }
-//
-//                    else if (comandoVoz.contains("anticlockwise")) {
-//                        comando = "J\r\n";
-//                        toSpeech.speak("I get dizzy very easily", TextToSpeech.QUEUE_FLUSH,null);
-//                    }
-//
-//                    else if (comandoVoz.contains("run oracle protocol")) {
-//                        toSpeech.speak("Now it's party reason, get ready!",
-//                                TextToSpeech.QUEUE_FLUSH,null,null);
-//                        comando = "I\r\nJ\r\nJ\r\nI\r\nJ\r\nI\r\n";
-//                    }
-//                    else {
-//                        comando = "a\r\n";
-//                    }
-
-                    //connectedThread.enviar(comando);
-                    //Toast.makeText(getApplicationContext(),"Comando = "+comando,Toast.LENGTH_LONG).show();
                 }
                 ////////comandos manuais/////////
             }
@@ -666,13 +365,16 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     @Override
-    protected void onResume() {
+    protected void onResume()
+    {
         super.onResume();
         openCvHandler();
     }
 
     @Override
-    public void onResult(AIResponse result){
+    public void onResult(AIResponse result)
+    {
+        aiService.stopListening();
         final Result resultado = result.getResult();
         final Status status = result.getStatus();
         final String speech = resultado.getFulfillment().getSpeech();
@@ -686,19 +388,28 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
 
-        vozTexto.setText("Query: "+ resultado.getResolvedQuery()+
-                "\nActions: "+ resultado.getAction()+
-                "\nParameters: " + parameterString+
-                "\nIntent Name: " + metadata.getIntentName()+
-                "\nIntent Id: "+metadata.getIntentId()+
-                "\nResponse: "+resultado.getFulfillment().getSpeech());//"\n Results: " + resultado.getFulfillment().getDisplayText());
-        toSpeech.speak(resultado.getFulfillment().getSpeech(), TextToSpeech.QUEUE_FLUSH,null);
-        while (toSpeech.isSpeaking());
+//        vozTexto.setText("Query: "+ resultado.getResolvedQuery()+
+//                "\nActions: "+ resultado.getAction()+
+//                "\nParameters: " + parameterString+
+//                "\nIntent Name: " + metadata.getIntentName()+
+//                "\nIntent Id: "+metadata.getIntentId()+
+//                "\nResponse: "+resultado.getFulfillment().getSpeech());//"\n Results: " + resultado.getFulfillment().getDisplayText());
 
-       // if(resultado.getFulfillment().getSpeech().contains("see you soon"))
-//            connectedThread.enviar("r");
         resposta = resultado.getFulfillment().getSpeech();
-        aiService.stopListening();
+
+        if(!pessoa.getName().isEmpty() && !falou) {
+            if (!pessoa.getName().equals("unknow")) {
+                MainActivity.this.speech.toSpeech(resposta + ", alright " + pessoa.getName() + "?");
+                falou = true;
+            }
+        }
+        else
+        {
+            MainActivity.this.speech.toSpeech(resposta);
+            recognize = true;
+            //resposta.replaceAll("@name", pessoa.getName());
+        }
+
         if(!resposta.contains("soon"))
             validateOs();
         else
@@ -706,32 +417,38 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     @Override
-    public void onError(AIError error) {
+    public void onError(AIError error)
+    {
 
     }
 
     @Override
-    public void onAudioLevel(float level) {
+    public void onAudioLevel(float level)
+    {
 
     }
 
     @Override
-    public void onListeningStarted() {
+    public void onListeningStarted()
+    {
 
     }
 
     @Override
-    public void onListeningCanceled() {
+    public void onListeningCanceled()
+    {
 
     }
 
     @Override
-    public void onListeningFinished() {
+    public void onListeningFinished()
+    {
 
     }
 
     @Override
-    public void onCameraViewStarted(int width, int height) {
+    public void onCameraViewStarted(int width, int height)
+    {
         mRgba = new Mat(height, width, CvType.CV_8UC4);
         mGray = new Mat(height, width, CvType.CV_8UC1);
         mCrop = new Mat(height, width, CvType.CV_8UC4);
@@ -739,14 +456,16 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     @Override
-    public void onCameraViewStopped() {
+    public void onCameraViewStopped()
+    {
         mRgba.release();
         mGray.release();
         mCrop.release();
     }
 
     @Override
-    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame)
+    {
         mRgba = inputFrame.rgba();
         Imgproc.cvtColor(mRgba, mGray, Imgproc.COLOR_RGBA2GRAY);
         if(cascadeFace != null)
@@ -902,7 +621,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return Base64.encodeToString(imgByte, Base64.DEFAULT);
     }
 
-
     private void haarCascadeHandler()
     {
         try
@@ -930,69 +648,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     }
 
-
-    private class ConnectedThread extends Thread {
-        private final InputStream mmInStream;
-        private final OutputStream mmOutStream;
-
-        public ConnectedThread(BluetoothSocket socket) {
-            InputStream tmpIn = null;
-            OutputStream tmpOut = null;
-
-            // Get the input and output streams, using temp objects because
-            // member streams are final
-            try {
-                tmpIn = socket.getInputStream();
-                tmpOut = socket.getOutputStream();
-            } catch (IOException e) { }
-
-            mmInStream = tmpIn;
-            mmOutStream = tmpOut;
-        }
-
-        public void run() {
-              // buffer store for the stream
-            int bytes, availableBytes = 0, teste; // bytes returned from read()
-
-            // Keep listening to the InputStream until an exception occurs
-            while (true) {
-                try {
-                    availableBytes = mmInStream.available();
-                    if(availableBytes > 0)
-                    {
-                        byte[] buffer = new byte[availableBytes];
-                        bytes = mmInStream.read(buffer);
-
-                        if(bytes > 0)
-                        {
-                            //String mens = new String(buffer, 0, bytes);
-                            teste = buffer[0];
-                            mHandler.obtainMessage(MESSAGE_READ, bytes, -1, teste).sendToTarget();
-                        }
-
-                    }
-                    // Read from the InputStream
-
-
-
-                    //String dadosBt = new String(buffer, 0, bytes);
-                    // Send the obtained bytes to the UI activity
-
-                } catch (IOException e) {
-                    break;
-                }
-            }
-        }
-
-        public void enviar(String dadosEnviar) {
-            byte [] msgBuffer = dadosEnviar.getBytes();
-            try {
-                mmOutStream.write(msgBuffer);
-            } catch (IOException e) { }
-        }
-
-    }
-
     private void validateOs()
     {
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -1008,7 +663,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         }
     }
-
     //@Override
     public void onRequestPermissionResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
     {
@@ -1093,6 +747,4 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         ivPupila.setTranslationX(-pupilaX); //Moves eye in X
         ivPupila.setTranslationY(pupilaY); //Moves eye in Y
     }
-
-
 }
