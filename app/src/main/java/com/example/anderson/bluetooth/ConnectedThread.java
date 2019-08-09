@@ -4,9 +4,12 @@ import android.app.Activity;
 import android.bluetooth.BluetoothSocket;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -17,7 +20,51 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Locale;
 
-public class ConnectedThread extends Thread {
+public class ConnectedThread extends Thread implements RecognitionListener {
+    @Override
+    public void onReadyForSpeech(Bundle params) {
+
+    }
+
+    @Override
+    public void onBeginningOfSpeech() {
+
+    }
+
+    @Override
+    public void onRmsChanged(float rmsdB) {
+
+    }
+
+    @Override
+    public void onBufferReceived(byte[] buffer) {
+
+    }
+
+    @Override
+    public void onEndOfSpeech() {
+
+    }
+
+    @Override
+    public void onError(int error) {
+
+    }
+
+    @Override
+    public void onResults(Bundle results) {
+
+    }
+
+    @Override
+    public void onPartialResults(Bundle partialResults) {
+
+    }
+
+    @Override
+    public void onEvent(int eventType, Bundle params) {
+
+    }
 
     private final InputStream mmInStream;
     private final OutputStream mmOutStream;
@@ -27,6 +74,8 @@ public class ConnectedThread extends Thread {
     private int result;
     private StringBuilder dadosBluetooth = new StringBuilder();
     private Speech speech;
+    private SpeechRecognizer mSpeechRec;
+    private Intent mSpeechRecIntent;
 
     public ConnectedThread(BluetoothSocket socket, Activity ac)
     {
@@ -57,14 +106,17 @@ public class ConnectedThread extends Thread {
 
                     dadosBluetooth.append((char) recebidos);
 
-                    Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+                    mSpeechRec = SpeechRecognizer.createSpeechRecognizer(activity);
+                    mSpeechRecIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                    mSpeechRecIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                    mSpeechRecIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+                    //mSpeechRecIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    //mSpeechRec.setRecognitionListener(activity.);
 
                     speech.toSpeech("I am the vision of the future, do you like to dialog?");
 
                     try {
-                        activity.startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
+                        activity.startActivityForResult(new Intent(activity, getVoice.class), REQ_CODE_SPEECH_OUTPUT);
 
                     }
                     catch (ActivityNotFoundException tim) {

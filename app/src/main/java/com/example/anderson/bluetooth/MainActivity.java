@@ -4,12 +4,15 @@ import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.AnimationDrawable;
+import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -52,6 +55,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -67,7 +71,7 @@ import retrofit2.Call;
 
 
 
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, AIListener {
+public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, AIListener, RecognitionListener{
 
 
     private TextView vozTexto;
@@ -81,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private static Mat mRgba, mGray, mCrop;
     private int absoluteFaceSize;
-    private boolean recognize = false, falou = false;
+    private boolean recognize = false, falou = false, finish_dialog = false;
     private static String txtclassifica;
     private File mCascadeFile;
     private Bitmap bmp = null;
@@ -90,13 +94,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private JavaCameraView javaCameraView;
     private Pessoa pessoa = new Pessoa();
 
+    private Intent intent;
+
     private ImageView imgPalpebra;
     private Speech speech;
+    private SpeechRecognizer mSpeechRecognizer;
 
     private AIService aiService;
     private static final int REQUEST_INTERNET = 200;
     private static final int RECORD_AUDIO_PERMISSION = 1;
 
+    private Button bTestar;
 
     //Eye Variables//
     //Screen Size
@@ -116,6 +124,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     //Target Position
     private float targetX;
     private float targetY;
+
+    private AIConfiguration config;
 
     //RAT
     private int x, y, centerx, centery;
@@ -173,17 +183,26 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
+
+        mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(MainActivity.this);
+        mSpeechRecognizer.setRecognitionListener(this);
+
         ivPalpebra = findViewById(R.id.ivPalpebra);
         ivPupila = findViewById(R.id.ivPupila);
         vozTexto = (TextView)findViewById(R.id.textView);
         javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
         speech = new Speech(this);
 
+//        bTestar = (Button) findViewById(R.id.testar);
+
         javaCameraView.setVisibility(SurfaceView.VISIBLE);
         javaCameraView.setCvCameraViewListener(this);
 
         meuBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         haarCascadeHandler();
+
+
+
 
         if (meuBluetoothAdapter.equals(null))
             Toast.makeText(getApplicationContext(),"Seu Dispositivo não possui Bluetooth",Toast.LENGTH_LONG).show();
@@ -202,6 +221,32 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_left);
             }
         });
+
+        intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+
+//        bTestar.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//
+//                speech.toSpeech("I am the vision of the future, do you like to dialog?");
+//
+////                try {
+////                    //startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
+////                    recognizer.startListening(MainActivity.this);
+////
+////                }
+////                catch (ActivityNotFoundException tim) {
+////                    //just put an toast if Google mic is not opened
+////                }
+//
+//
+//
+//
+//                mSpeechRecognizer.startListening(intent);
+//            }
+//        });
 
         //Eye Initialization//
         ivPalpebra.setBackgroundResource(R.drawable.palpebra_anim);
@@ -285,7 +330,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                     try{
                         meuSocket = meuDevice.createRfcommSocketToServiceRecord(MEU_UUID);
                         meuSocket.connect();
-                        Toast.makeText(getApplicationContext(),"Você foi conectado com: "+MAC,Toast.LENGTH_LONG).show();
+                        //Toast.makeText(getApplicationContext(),"Você foi conectado com: "+MAC,Toast.LENGTH_LONG).show();
 
                         conexao = true;
                         connectedThread = new ConnectedThread( meuSocket,MainActivity.this);
@@ -303,46 +348,47 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
             case REQ_CODE_SPEECH_OUTPUT: {
                 if ((resultCode == RESULT_OK) && (null!= data)){
-                    ArrayList<String> voiceInText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    comandoVoz = voiceInText.get(0);
+//                   ArrayList<String> voiceInText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+//                   comandoVoz = voiceInText.get(0);
 
-                        final AIConfiguration config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
-                                AIConfiguration.SupportedLanguages.English,
-                                AIConfiguration.RecognitionEngine.System);
-                        aiService = AIService.getService(this, config);
-                        aiService.setListener(this);
+                    if(data.getStringExtra("test").equals("getVoice"))
+                    {
+                        mSpeechRecognizer.startListening(intent);
+                    }
 
-                        if (comandoVoz.contains("register")) {
-                            startActivity(new Intent(MainActivity.this, Register.class));
-                            connectedThread.enviar("r");
-                        }
-                        else if(comandoVoz.contains("yes"))
-                        {
-                            falou = false;
-                            int count = 0;
-                            recognize = true;
-                            pessoa.setName("");
-                            //while(true)
-                            //{
-                                if(!pessoa.getName().isEmpty())
-                                {
-                                    if(!pessoa.getName().equals("unknow"))
-                                    {
-                                        speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
-                                        pessoa.setName("");
-                                        falou = true;
-                                        break;
-                                    }
-                                }
-                                else
-                                    recognize = true;
-                            //}
-
-                            validateOs();
-                        }
-
-                        else
-                            connectedThread.enviar("r");
+//                    config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
+//                            AIConfiguration.SupportedLanguages.English,
+//                            AIConfiguration.RecognitionEngine.System);
+//
+//
+//                        aiService = AIService.getService(this, config);
+//                        aiService.setListener(this);
+//
+//                        if (comandoVoz.contains("register")) {
+//                            startActivity(new Intent(MainActivity.this, Register.class));
+//                            connectedThread.enviar("r");
+//                        }
+//                        else if(comandoVoz.contains("yes"))
+//                        {
+//                            recognize = true;
+//                            pessoa = new Pessoa();
+//                            if(!pessoa.getName().isEmpty())
+//                            {
+//                                if(!pessoa.getName().equals("unknow"))
+//                                {
+//                                    speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
+//                                    pessoa.setName("");
+//                                    falou = true;
+//                                    break;
+//                                }
+//                            }
+//                            else
+//                                recognize = true;
+//                            validateOs();
+//                        }
+//
+//                        else
+//                            connectedThread.enviar("r");
                 }
                 ////////comandos manuais/////////
             }
@@ -374,7 +420,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public void onResult(AIResponse result)
     {
-        aiService.stopListening();
+        //aiService.stopListening();
         final Result resultado = result.getResult();
         final Status status = result.getStatus();
         final String speech = resultado.getFulfillment().getSpeech();
@@ -396,6 +442,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 //                "\nResponse: "+resultado.getFulfillment().getSpeech());//"\n Results: " + resultado.getFulfillment().getDisplayText());
 
         resposta = resultado.getFulfillment().getSpeech();
+        //intent = metadata
 
         if(!pessoa.getName().isEmpty() && !falou) {
             if (!pessoa.getName().equals("unknow")) {
@@ -406,6 +453,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         else
         {
             MainActivity.this.speech.toSpeech(resposta);
+            //while(MainActivity.this.speech.getToSpeech().isSpeaking());
             recognize = true;
             //resposta.replaceAll("@name", pessoa.getName());
         }
@@ -413,13 +461,23 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         if(!resposta.contains("soon"))
             validateOs();
         else
+        {
+            MainActivity.this.speech.toSpeech("Good bye. Anybody else want to chat with me?");
             connectedThread.enviar("r");
+        }
+
     }
 
     @Override
     public void onError(AIError error)
     {
+        aiService.stopListening();
+        speech.toSpeech("I didn't catch that. What did you say?");
 
+        aiService = AIService.getService(this, config);
+        aiService.setListener(this);
+
+        aiService.startListening();
     }
 
     @Override
@@ -437,13 +495,22 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public void onListeningCanceled()
     {
+        Toast.makeText(getApplicationContext(), "Canceled", Toast.LENGTH_LONG).show();
 
+        aiService = AIService.getService(this, config);
+        aiService.setListener(this);
+
+        aiService.startListening();
     }
 
     @Override
     public void onListeningFinished()
     {
-
+//        aiService.stopListening();
+//        if(!finish_dialog)
+//        {
+//            speech.toSpeech("I don't understand you");
+//        }
     }
 
     @Override
@@ -483,7 +550,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         LookAtBiggest(faceArray);
 
-        if(recognize)
+        if(recognize) //trocar por recognize
         {
             String response = "";
             if(!faces.empty())
@@ -659,7 +726,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         else
         {
             aiService.startListening();
-            //service = false;
 
         }
     }
@@ -746,5 +812,94 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         ivPupila.setTranslationX(-pupilaX); //Moves eye in X
         ivPupila.setTranslationY(pupilaY); //Moves eye in Y
+    }
+
+    @Override
+    public void onPointerCaptureChanged(boolean hasCapture) {
+
+    }
+
+    @Override
+    public void onReadyForSpeech(Bundle params) {
+
+    }
+
+    @Override
+    public void onBeginningOfSpeech() {
+
+    }
+
+    @Override
+    public void onRmsChanged(float rmsdB) {
+
+    }
+
+    @Override
+    public void onBufferReceived(byte[] buffer) {
+
+    }
+
+    @Override
+    public void onEndOfSpeech() {
+
+    }
+
+    @Override
+    public void onError(int error) {
+        speech.toSpeech("Sorry, I didn't understand. Can you repeat please?");
+        mSpeechRecognizer.startListening(intent);
+    }
+
+    @Override
+    public void onResults(Bundle results) {
+        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        comandoVoz = matches.get(0);
+
+        dialogFlow();
+    }
+
+    public void dialogFlow()
+    {
+        config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
+        AIConfiguration.SupportedLanguages.English,
+        AIConfiguration.RecognitionEngine.System);
+
+
+        aiService = AIService.getService(this, config);
+        aiService.setListener(this);
+
+        if (comandoVoz.contains("register")) {
+            startActivity(new Intent(MainActivity.this, Register.class));
+        }
+        else if(comandoVoz.contains("yes"))
+        {
+            recognize = true;
+            pessoa = new Pessoa();
+            if(!pessoa.getName().isEmpty())
+            {
+                if(!pessoa.getName().equals("unknow"))
+                {
+                    speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
+                    pessoa.setName("");
+                    falou = true;
+                    //break;
+                }
+            }
+            else
+                recognize = true;
+            validateOs();
+        }
+        else
+            connectedThread.enviar("r");
+    }
+
+    @Override
+    public void onPartialResults(Bundle partialResults) {
+
+    }
+
+    @Override
+    public void onEvent(int eventType, Bundle params) {
+
     }
 }

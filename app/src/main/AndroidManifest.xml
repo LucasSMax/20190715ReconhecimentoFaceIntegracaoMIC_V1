@@ -21,8 +21,8 @@
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning"
         tools:replace="android:icon,android:theme">
-        <activity android:name=".Menu"></activity>
-        <!-- <activity android:name=".EyeActivity"></activity> -->
+        <activity android:name=".getVoice"></activity>
+        <activity android:name=".Menu" /> <!-- <activity android:name=".EyeActivity"></activity> -->
         <activity
             android:name=".Register"
             android:screenOrientation="landscape" />
