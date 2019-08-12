@@ -113,7 +113,7 @@ public class ConnectedThread extends Thread implements RecognitionListener {
                     //mSpeechRecIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     //mSpeechRec.setRecognitionListener(activity.);
 
-                    speech.toSpeech("I am the vision of the future, do you like to dialog?");
+                    //speech.toSpeech("I am the vision of the future, do you like to dialog?");
 
                     try {
                         activity.startActivityForResult(new Intent(activity, getVoice.class), REQ_CODE_SPEECH_OUTPUT);

@@ -3,6 +3,7 @@ package com.example.anderson.bluetooth;
 import android.app.Activity;
 import android.speech.tts.TextToSpeech;
 
+import java.security.AccessControlContext;
 import java.util.Locale;
 
 public class Speech {
@@ -25,7 +26,6 @@ public class Speech {
     public void toSpeech(String speech)
     {
         to_Speech.speak(speech, TextToSpeech.QUEUE_FLUSH,null);
-        while(to_Speech.isSpeaking());
     }
 
     public TextToSpeech getToSpeech()

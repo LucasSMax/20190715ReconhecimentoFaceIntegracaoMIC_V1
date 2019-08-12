@@ -13,6 +13,7 @@ import android.graphics.drawable.AnimationDrawable;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -73,8 +74,6 @@ import retrofit2.Call;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, AIListener, RecognitionListener{
 
-
-    private TextView vozTexto;
     private String resposta = "dialog";
 
     private static final int SOLICITA_ATIVACAO = 1;
@@ -83,20 +82,19 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private final int REQ_CODE_SPEECH_OUTPUT = 143;
     private final int BT_BLUETOOTH = 4;
 
+    private Pessoa pessoa;
+
     private static Mat mRgba, mGray, mCrop;
     private int absoluteFaceSize;
-    private boolean recognize = false, falou = false, finish_dialog = false;
-    private static String txtclassifica;
+    private boolean recognize = false, falou = false;
     private File mCascadeFile;
     private Bitmap bmp = null;
     private MatOfRect faces = new MatOfRect();
     private CascadeClassifier cascadeFace;
     private JavaCameraView javaCameraView;
-    private Pessoa pessoa = new Pessoa();
 
     private Intent intent;
 
-    private ImageView imgPalpebra;
     private Speech speech;
     private SpeechRecognizer mSpeechRecognizer;
 
@@ -104,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final int REQUEST_INTERNET = 200;
     private static final int RECORD_AUDIO_PERMISSION = 1;
 
-    private Button bTestar;
+//    private Button bTestar;
 
     //Eye Variables//
     //Screen Size
@@ -141,7 +139,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         public void onManagerConnected(int status) {
             switch (status) {
                 case BaseLoaderCallback.SUCCESS: {
-                    //Toast.makeText(getApplicationContext(), "Vision Ok", Toast.LENGTH_LONG).show();
                     javaCameraView.enableView();
                     break;
                 }
@@ -183,13 +180,16 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
+        config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
+                AIConfiguration.SupportedLanguages.English,
+                AIConfiguration.RecognitionEngine.System);
+
 
         mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(MainActivity.this);
         mSpeechRecognizer.setRecognitionListener(this);
 
         ivPalpebra = findViewById(R.id.ivPalpebra);
         ivPupila = findViewById(R.id.ivPupila);
-        vozTexto = (TextView)findViewById(R.id.textView);
         javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
         speech = new Speech(this);
 
@@ -232,18 +232,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 //
 //                speech.toSpeech("I am the vision of the future, do you like to dialog?");
 //
-////                try {
-////                    //startActivityForResult(intent, REQ_CODE_SPEECH_OUTPUT);
-////                    recognizer.startListening(MainActivity.this);
-////
-////                }
-////                catch (ActivityNotFoundException tim) {
-////                    //just put an toast if Google mic is not opened
-////                }
-//
-//
-//
-//
 //                mSpeechRecognizer.startListening(intent);
 //            }
 //        });
@@ -269,6 +257,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
         if(javaCameraView!=null)
             javaCameraView.disableView();
+        if(mSpeechRecognizer != null)
+            mSpeechRecognizer.destroy();
+        if(aiService != null)
+            aiService = null;
     }
 
 //    private void btnVoz (){
@@ -351,9 +343,12 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 //                   ArrayList<String> voiceInText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 //                   comandoVoz = voiceInText.get(0);
 
+                    while (speech.getToSpeech().isSpeaking());
                     if(data.getStringExtra("test").equals("getVoice"))
                     {
-                        mSpeechRecognizer.startListening(intent);
+                       //mSpeechRecognizer.startListening(intent);
+                        pessoa = new Pessoa();
+                        recognize = true;
                     }
 
 //                    config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
@@ -438,31 +433,23 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 //                "\nActions: "+ resultado.getAction()+
 //                "\nParameters: " + parameterString+
 //                "\nIntent Name: " + metadata.getIntentName()+
-//                "\nIntent Id: "+metadata.getIntentId()+
+//                "\nIntent Id: "+metadata.getIntentId()+m
 //                "\nResponse: "+resultado.getFulfillment().getSpeech());//"\n Results: " + resultado.getFulfillment().getDisplayText());
 
         resposta = resultado.getFulfillment().getSpeech();
         //intent = metadata
 
-        if(!pessoa.getName().isEmpty() && !falou) {
-            if (!pessoa.getName().equals("unknow")) {
-                MainActivity.this.speech.toSpeech(resposta + ", alright " + pessoa.getName() + "?");
-                falou = true;
-            }
-        }
-        else
-        {
-            MainActivity.this.speech.toSpeech(resposta);
-            //while(MainActivity.this.speech.getToSpeech().isSpeaking());
-            recognize = true;
-            //resposta.replaceAll("@name", pessoa.getName());
-        }
 
-        if(!resposta.contains("soon"))
+
+
+        if(!resposta.contains("soon")) {
+            MainActivity.this.speech.toSpeech(resposta);
+            while (MainActivity.this.speech.getToSpeech().isSpeaking());
             validateOs();
-        else
+        }else
         {
             MainActivity.this.speech.toSpeech("Good bye. Anybody else want to chat with me?");
+            while (MainActivity.this.speech.getToSpeech().isSpeaking());
             connectedThread.enviar("r");
         }
 
@@ -471,13 +458,24 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public void onError(AIError error)
     {
-        aiService.stopListening();
-        speech.toSpeech("I didn't catch that. What did you say?");
+        if(error.getMessage().contains("busy"))
+        {
+            aiService.stopListening();
+            speech.toSpeech("I didn't catch that. Sorry.");
+            while(speech.getToSpeech().isSpeaking());
+        }
+        else{
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    aiService = AIService.getService(MainActivity.this, config);
+                    aiService.setListener(MainActivity.this);
+                    aiService.startListening();
+                }
+            });
+        }
 
-        aiService = AIService.getService(this, config);
-        aiService.setListener(this);
 
-        aiService.startListening();
     }
 
     @Override
@@ -588,6 +586,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         });
                     }
                 }
+
                 else if(centerx > x*2){
                     if(centery < y){
                         runOnUiThread(new Runnable() {
@@ -614,6 +613,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         });
                     }
                 }
+
                 else{
                     if(centery < y){
                         runOnUiThread(new Runnable() {
@@ -653,14 +653,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                     e.printStackTrace();
                 }
 
-                if(response != null && !response.equals("null") && !response.equals("scanning"))
+                if(response != null && !response.equals("null")
+                        && !response.equals("scanning") && !response.equals("unknow"))
                 {
                     pessoa.setName(response);
                     pessoa.setProfissao("profissao");
+                    dialogFlow_nome();
                     //toSpeech.speak("You are " + txtclassifica, TextToSpeech.QUEUE_FLUSH,null,null);
+                    recognize = false;
                 }
                 else
-                    pessoa.setName("unknow");
+                    pessoa.setName("");
                     //toSpeech.speak("I don't know you... do you want to tell me your name?",
                      //       TextToSpeech.QUEUE_FLUSH,null,null);
             }
@@ -668,16 +671,25 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 //toSpeech.speak("I am not seeing anyone...", TextToSpeech.QUEUE_FLUSH,null,null);
 
         }
-        recognize = false;
+        //recognize = false;
         return mRgba;
     }
 
     private String updateImage(String image) throws IOException
     {
-        ApiInterface apiInterface = ApiClient.getApiClient().create(ApiInterface.class);
-        Call<ImageClass> call = apiInterface.uploadImage(image);
-        ImageClass Im = call.execute().body();
-        return Im.getResponse();
+        try
+        {
+
+            ApiInterface apiInterface = ApiClient.getApiClient().create(ApiInterface.class);
+            Call<ImageClass> call = apiInterface.uploadImage(image);
+            ImageClass Im = call.execute().body();
+            return Im.getResponse();
+        }
+        catch (Exception e)
+        {
+
+        }
+        return "failed";
     }
 
     private String imageToString(Bitmap bitmap)
@@ -725,20 +737,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
         else
         {
+            aiService = AIService.getService(MainActivity.this, config);
+            aiService.setListener(MainActivity.this);
             aiService.startListening();
-
-        }
-    }
-    //@Override
-    public void onRequestPermissionResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
-    {
-        if(requestCode == RECORD_AUDIO_PERMISSION)
-        {
-            if(grantResults.length == 1 && grantResults[0] == getPackageManager().PERMISSION_GRANTED){
-                aiService.startListening();
-            }
-            else
-                vozTexto.setText("Permissão negada");
         }
     }
 
@@ -860,37 +861,33 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     public void dialogFlow()
     {
-        config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
-        AIConfiguration.SupportedLanguages.English,
-        AIConfiguration.RecognitionEngine.System);
-
-
         aiService = AIService.getService(this, config);
         aiService.setListener(this);
 
         if (comandoVoz.contains("register")) {
             startActivity(new Intent(MainActivity.this, Register.class));
         }
-        else if(comandoVoz.contains("yes"))
-        {
-            recognize = true;
+        else if(comandoVoz.contains("yes")) {
+
             pessoa = new Pessoa();
-            if(!pessoa.getName().isEmpty())
-            {
-                if(!pessoa.getName().equals("unknow"))
-                {
-                    speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
-                    pessoa.setName("");
-                    falou = true;
-                    //break;
-                }
-            }
-            else
-                recognize = true;
-            validateOs();
+            recognize = true;
         }
         else
             connectedThread.enviar("r");
+    }
+
+    private void dialogFlow_nome()
+    {
+        speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
+        while(speech.getToSpeech().isSpeaking());
+        MainActivity.this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mSpeechRecognizer.stopListening();
+                validateOs();
+            }
+        });
+
     }
 
     @Override
