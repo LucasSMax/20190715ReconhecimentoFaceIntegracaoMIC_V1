@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private Pessoa pessoa;
 
     private static Mat mRgba, mGray, mCrop;
-    private int absoluteFaceSize;
+    private int absoluteFaceSize, count = 0;
     private boolean recognize = false, falou = false;
     private File mCascadeFile;
     private Bitmap bmp = null;
@@ -662,10 +662,24 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                     //toSpeech.speak("You are " + txtclassifica, TextToSpeech.QUEUE_FLUSH,null,null);
                     recognize = false;
                 }
-                else
+                else {
                     pessoa.setName("");
-                    //toSpeech.speak("I don't know you... do you want to tell me your name?",
+
+                }
+                //toSpeech.speak("I don't know you... do you want to tell me your name?",
                      //       TextToSpeech.QUEUE_FLUSH,null,null);
+            }
+            if(pessoa.getName().equals(""))
+            {
+                count += 1;
+                if(count == 30)
+                {
+                    speech.toSpeech("I didn't find anyone.");
+                    while (speech.getToSpeech().isSpeaking());
+                    recognize = false;
+                    connectedThread.enviar("r");
+                    count = 0;
+                }
             }
             //else
                 //toSpeech.speak("I am not seeing anyone...", TextToSpeech.QUEUE_FLUSH,null,null);
