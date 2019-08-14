@@ -16,8 +16,19 @@ public class getVoice extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        int recebido;
+        if (savedInstanceState == null) {
+            recebido =  getIntent().getIntExtra("valor", 0);
+//            if(extras == null) {
+//                recebido = 88;
+//            } else {
+//                recebido = extras.getInt("valor");
+//            }
+        } else {
+            recebido = (Integer) savedInstanceState.getSerializable("valor");
+        }
         Intent devolve = new Intent();
-        devolve.putExtra("test", "getVoice");
+        devolve.putExtra("valor", recebido);
         setResult(RESULT_OK, devolve);
         finish();
     }

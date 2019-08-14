@@ -85,8 +85,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private Pessoa pessoa;
 
     private static Mat mRgba, mGray, mCrop;
-    private int absoluteFaceSize, count = 0;
-    private boolean recognize = false, falou = false;
+    private int absoluteFaceSize, count = 0, try_recognize = 0, recebido = 2;
+    private boolean recognize = false, falou = false, rosto = false;
     private File mCascadeFile;
     private Bitmap bmp = null;
     private MatOfRect faces = new MatOfRect();
@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final int REQUEST_INTERNET = 200;
     private static final int RECORD_AUDIO_PERMISSION = 1;
 
-//    private Button bTestar;
+    private Button bTestar;
 
     //Eye Variables//
     //Screen Size
@@ -193,7 +193,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
         speech = new Speech(this);
 
-//        bTestar = (Button) findViewById(R.id.testar);
+        bTestar = (Button) findViewById(R.id.testar);
 
         javaCameraView.setVisibility(SurfaceView.VISIBLE);
         javaCameraView.setCvCameraViewListener(this);
@@ -226,15 +226,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
 
-//        bTestar.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//
+        bTestar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, Register.class));
 //                speech.toSpeech("I am the vision of the future, do you like to dialog?");
 //
 //                mSpeechRecognizer.startListening(intent);
-//            }
-//        });
+            }
+        });
 
         //Eye Initialization//
         ivPalpebra.setBackgroundResource(R.drawable.palpebra_anim);
@@ -343,12 +343,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 //                   ArrayList<String> voiceInText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 //                   comandoVoz = voiceInText.get(0);
 
+                    int cmd_bt = data.getIntExtra("valor", 0);
                     while (speech.getToSpeech().isSpeaking());
-                    if(data.getStringExtra("test").equals("getVoice"))
+                    if(true)
                     {
                        //mSpeechRecognizer.startListening(intent);
                         pessoa = new Pessoa();
                         recognize = true;
+                        rosto = false;
                     }
 
 //                    config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
@@ -448,9 +450,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             validateOs();
         }else
         {
-            MainActivity.this.speech.toSpeech("Good bye. Anybody else want to chat with me?");
-            while (MainActivity.this.speech.getToSpeech().isSpeaking());
             connectedThread.enviar("r");
+            MainActivity.this.speech.toSpeech("Good bye.");
+            while (MainActivity.this.speech.getToSpeech().isSpeaking());
+
         }
 
     }
@@ -463,6 +466,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             aiService.stopListening();
             speech.toSpeech("I didn't catch that. Sorry.");
             while(speech.getToSpeech().isSpeaking());
+            connectedThread.enviar("r");
         }
         else{
             MainActivity.this.runOnUiThread(new Runnable() {
@@ -548,6 +552,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         LookAtBiggest(faceArray);
 
+
         if(recognize) //trocar por recognize
         {
             String response = "";
@@ -560,93 +565,106 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 x = mRgba.width()/3;
                 y = mRgba.height()/3;
 
-                if(centerx < x){
-                    if(centery < y){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("0");
-                            }
-                        });
+//                if(!rosto)
+//                {
+                    if(centerx < x){
+                        if(centery < y){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("0");
+                                    //rosto = true;
+                                }
+                            });
+                        }
+                        else if(centery > y*2){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("6");
+                                    //rosto = true;
+                                }
+                            });
+                        }
+                        else{
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("3");
+                                    //rosto = true;
+                                }
+                            });
+                        }
                     }
-                    else if(centery > y*2){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("6");
-                            }
-                        });
-                    }
-                    else{
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("3");
-                            }
-                        });
-                    }
-                }
 
-                else if(centerx > x*2){
-                    if(centery < y){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("2");
-                            }
-                        });
+                    else if(centerx > x*2){
+                        if(centery < y){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("2");
+                                    //rosto = true;
+                                }
+                            });
+                        }
+                        else if(centery > 2*y){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("8");
+                                    //rosto = true;
+                                }
+                            });
+                        }
+                        else{
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("5");
+                                    //rosto = true;
+                                }
+                            });
+                        }
                     }
-                    else if(centery > 2*y){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("8");
-                            }
-                        });
-                    }
-                    else{
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("5");
-                            }
-                        });
-                    }
-                }
 
-                else{
-                    if(centery < y){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("1");
-                            }
-                        });
-                    }
-                    else if(centery > 2*y){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("7");
-                            }
-                        });
-                    }
                     else{
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                connectedThread.enviar("4");
-                            }
-                        });
+                        if(centery < y){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("1");
+                                    //rosto = true;
+                                }
+                            });
+                        }
+                        else if(centery > 2*y){
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("7");
+                                    //rosto = true;
+                                }
+                            });
+                        }
+                        else{
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    connectedThread.enviar("4");
+                                    //rosto = true;
+                                }
+                            });
+                        }
                     }
-                }
+                //}
+
 
                 mCrop = new Mat(mRgba, rect);
                 Imgproc.cvtColor(mCrop, mCrop, Imgproc.COLOR_RGBA2RGB);
                 Imgproc.resize(mCrop,mCrop,new Size(96,96));
                 bmp = Bitmap.createBitmap(mCrop.cols(), mCrop.rows(), Bitmap.Config.RGB_565);
                 Utils.matToBitmap(mCrop, bmp);
-
+                rosto = true;
                 try {
                     response = updateImage(imageToString(bmp));
                 } catch (IOException e) {
@@ -656,11 +674,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 if(response != null && !response.equals("null")
                         && !response.equals("scanning") && !response.equals("unknow"))
                 {
+                    count = 0;
                     pessoa.setName(response);
                     pessoa.setProfissao("profissao");
                     dialogFlow_nome();
-                    //toSpeech.speak("You are " + txtclassifica, TextToSpeech.QUEUE_FLUSH,null,null);
                     recognize = false;
+                    count = 0;
+
+                    return mRgba;
                 }
                 else {
                     pessoa.setName("");
@@ -669,16 +690,42 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 //toSpeech.speak("I don't know you... do you want to tell me your name?",
                      //       TextToSpeech.QUEUE_FLUSH,null,null);
             }
-            if(pessoa.getName().equals(""))
-            {
-                count += 1;
-                if(count == 30)
-                {
-                    speech.toSpeech("I didn't find anyone.");
-                    while (speech.getToSpeech().isSpeaking());
-                    recognize = false;
-                    connectedThread.enviar("r");
-                    count = 0;
+
+            if(!rosto) {
+                if (pessoa.getName().equals("")) {
+                    count += 1;
+                    if (count <= 70) {
+                        if (count % 10 == 0) {
+                            switch (count / 10) {
+                                case 1:
+                                    connectedThread.enviar("0");
+                                    break;
+                                case 2:
+                                    connectedThread.enviar("5");
+                                    break;
+                                case 3:
+                                    connectedThread.enviar("5");
+                                    break;
+                                case 4:
+                                    connectedThread.enviar("7");
+                                    break;
+                                case 5:
+                                    connectedThread.enviar("3");
+                                    break;
+                                case 6:
+                                    connectedThread.enviar("3");
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    } else {
+                        speech.toSpeech("I didn't find anyone.");
+                        while (speech.getToSpeech().isSpeaking());
+                        recognize = false;
+                        connectedThread.enviar("r");
+                        count = 0;
+                    }
                 }
             }
             //else
@@ -686,6 +733,20 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         }
         //recognize = false;
+        if(rosto && recognize)
+        {
+            try_recognize+=1;
+            if(try_recognize > 15)
+            {
+
+                connectedThread.enviar("r");
+                speech.toSpeech("I'm not seeing anyone");
+                while (speech.getToSpeech().isSpeaking());
+                recognize = false;
+                try_recognize = 0;
+                count = 0;
+            }
+        }
         return mRgba;
     }
 

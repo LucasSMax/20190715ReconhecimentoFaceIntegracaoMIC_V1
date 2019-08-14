@@ -111,6 +111,7 @@ public class ConnectedThread extends Thread implements RecognitionListener {
                     mSpeechRecIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                     mSpeechRecIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
                     //mSpeechRecIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    mSpeechRecIntent.putExtra("valor", recebidos);
                     //mSpeechRec.setRecognitionListener(activity.);
 
                     //speech.toSpeech("I am the vision of the future, do you like to dialog?");
