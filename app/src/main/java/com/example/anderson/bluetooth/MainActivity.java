@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final int SOLICITA_DESCOBERTA_BT = 3;
     private final int REQ_CODE_SPEECH_OUTPUT = 143;
     private final int BT_BLUETOOTH = 4;
-
+a
     private Pessoa pessoa;
 
     private static Mat mRgba, mGray, mCrop;
@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final int REQUEST_INTERNET = 200;
     private static final int RECORD_AUDIO_PERMISSION = 1;
 
-    private Button bTestar;
+    private Button bTestar, bSimulate;
 
     //Eye Variables//
     //Screen Size
@@ -150,14 +150,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
     };
 
-    
+
 
     BluetoothAdapter meuBluetoothAdapter = null;
     BluetoothDevice meuDevice = null;
     BluetoothSocket meuSocket = null;
 
     ConnectedThread connectedThread;
-    
+
     boolean conexao = false, service;
 
     private static String MAC = null;
@@ -194,6 +194,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         speech = new Speech(this);
 
         bTestar = (Button) findViewById(R.id.testar);
+        //bSimulate = (Button) findViewById(R.id.simulate);
 
         javaCameraView.setVisibility(SurfaceView.VISIBLE);
         javaCameraView.setCvCameraViewListener(this);
@@ -233,6 +234,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 //                speech.toSpeech("I am the vision of the future, do you like to dialog?");
 //
 //                mSpeechRecognizer.startListening(intent);
+            }
+        });
+
+        bSimulate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mSpeechRecognizer.startListening(intent);
             }
         });
 
@@ -352,40 +360,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                         recognize = true;
                         rosto = false;
                     }
-
-//                    config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
-//                            AIConfiguration.SupportedLanguages.English,
-//                            AIConfiguration.RecognitionEngine.System);
-//
-//
-//                        aiService = AIService.getService(this, config);
-//                        aiService.setListener(this);
-//
-//                        if (comandoVoz.contains("register")) {
-//                            startActivity(new Intent(MainActivity.this, Register.class));
-//                            connectedThread.enviar("r");
-//                        }
-//                        else if(comandoVoz.contains("yes"))
-//                        {
-//                            recognize = true;
-//                            pessoa = new Pessoa();
-//                            if(!pessoa.getName().isEmpty())
-//                            {
-//                                if(!pessoa.getName().equals("unknow"))
-//                                {
-//                                    speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
-//                                    pessoa.setName("");
-//                                    falou = true;
-//                                    break;
-//                                }
-//                            }
-//                            else
-//                                recognize = true;
-//                            validateOs();
-//                        }
-//
-//                        else
-//                            connectedThread.enviar("r");
                 }
                 ////////comandos manuais/////////
             }
@@ -930,8 +904,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     public void onResults(Bundle results) {
         ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         comandoVoz = matches.get(0);
-
-        dialogFlow();
+        if (comandoVoz.contains("hello actor")) {
+            //dialogFlow();
+        }
     }
 
     public void dialogFlow()
