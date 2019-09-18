@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/constrain"
+    tools:context=".Menu">
+
+    <TextView
+        android:id="@+id/textViewMenu"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="TextView"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnVoz" />
+
+    <ImageView
+        android:id="@+id/BlackBackGround"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:color/background_dark" />
+
+    <Button
+        android:id="@+id/btnConexao"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Conectar"
+        app:layout_constraintBottom_toTopOf="@+id/btnDescobrir"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btnDescobrir"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Descobrir"
+        app:layout_constraintBottom_toTopOf="@+id/btnVoz"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnConexao" />
+
+    <Button
+        android:id="@+id/btnVoz"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Comando de Voz"
+        app:layout_constraintBottom_toTopOf="@+id/textViewMenu"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnDescobrir" />
+
+</android.support.constraint.ConstraintLayout>

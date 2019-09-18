@@ -1,0 +1,9 @@
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:oneshot="false">
+    <item android:drawable="@drawable/olho_frame_0" android:duration="5000" />
+    <item android:drawable="@drawable/olho_frame_1" android:duration="1" />
+    <item android:drawable="@drawable/olho_frame_2" android:duration="1" />
+    <item android:drawable="@drawable/olho_frame_3" android:duration="1" />
+    <item android:drawable="@drawable/olho_frame_4" android:duration="1" />
+    <item android:drawable="@drawable/olho_frame_5" android:duration="1" />
+</animation-list>

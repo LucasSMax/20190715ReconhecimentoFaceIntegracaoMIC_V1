@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:allowBackup="true"
@@ -18,9 +19,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".Register"></activity>
-        <activity android:name=".MainActivity">
+        tools:ignore="GoogleAppIndexingWarning"
+        tools:replace="android:icon,android:theme">
+        <activity android:name=".getVoice"></activity>
+        <activity android:name=".Menu" /> <!-- <activity android:name=".EyeActivity"></activity> -->
+        <activity
+            android:name=".Register"
+            android:screenOrientation="landscape" />
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
