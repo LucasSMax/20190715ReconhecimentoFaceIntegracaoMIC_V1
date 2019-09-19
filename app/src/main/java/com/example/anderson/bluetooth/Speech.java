@@ -8,10 +8,12 @@ import java.util.Locale;
 
 public class Speech {
 
+    private Activity activity;
     private TextToSpeech to_Speech;
 
     public Speech(Activity activity)
     {
+        this.activity = activity;
         to_Speech = new TextToSpeech(activity, new TextToSpeech.OnInitListener()
         {
             @Override

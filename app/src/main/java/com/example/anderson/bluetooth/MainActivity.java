@@ -58,11 +58,14 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
+import ai.api.RequestExtras;
 import ai.api.android.AIConfiguration;
 import ai.api.android.AIService;
 import ai.api.AIListener;
+import ai.api.model.AIContext;
 import ai.api.model.AIError;
 import ai.api.model.AIResponse;
 import ai.api.model.Metadata;
@@ -81,12 +84,12 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final int SOLICITA_DESCOBERTA_BT = 3;
     private final int REQ_CODE_SPEECH_OUTPUT = 143;
     private final int BT_BLUETOOTH = 4;
-a
+
     private Pessoa pessoa;
 
     private static Mat mRgba, mGray, mCrop;
     private int absoluteFaceSize, count = 0, try_recognize = 0, recebido = 2;
-    private boolean recognize = false, falou = false, rosto = false;
+    private boolean recognize = false, falou = false, rosto = false, useBluetooth = false;
     private File mCascadeFile;
     private Bitmap bmp = null;
     private MatOfRect faces = new MatOfRect();
@@ -94,6 +97,8 @@ a
     private JavaCameraView javaCameraView;
 
     private Intent intent;
+
+    private RequestExtras requestExtras;
 
     private Speech speech;
     private SpeechRecognizer mSpeechRecognizer;
@@ -180,7 +185,11 @@ a
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
-        config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
+//        config = new AIConfiguration("bd26714d7b1f4087aa0623da6018c8d9",
+//                AIConfiguration.SupportedLanguages.English,
+//                AIConfiguration.RecognitionEngine.System);
+
+        config = new AIConfiguration("b4e6f741424f4ca2927564b0d2213681",
                 AIConfiguration.SupportedLanguages.English,
                 AIConfiguration.RecognitionEngine.System);
 
@@ -192,9 +201,9 @@ a
         ivPupila = findViewById(R.id.ivPupila);
         javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
         speech = new Speech(this);
-
+//
         bTestar = (Button) findViewById(R.id.testar);
-        //bSimulate = (Button) findViewById(R.id.simulate);
+        bSimulate = (Button) findViewById(R.id.simulate);
 
         javaCameraView.setVisibility(SurfaceView.VISIBLE);
         javaCameraView.setCvCameraViewListener(this);
@@ -226,7 +235,7 @@ a
         intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-
+//
         bTestar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -234,13 +243,20 @@ a
 //                speech.toSpeech("I am the vision of the future, do you like to dialog?");
 //
 //                mSpeechRecognizer.startListening(intent);
+                //       aiService.startListening();
             }
         });
-
+////
         bSimulate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mSpeechRecognizer.startListening(intent);
+                //startActivityForResult(new Intent(MainActivity.this, getVoice.class), REQ_CODE_SPEECH_OUTPUT);
+   //             pessoa = new Pessoa();
+                //dialogFlow_nome();
+//
+                pessoa = new Pessoa();
+                recognize = true;
+                rosto = false;
             }
         });
 
@@ -335,7 +351,8 @@ a
                         conexao = true;
                         connectedThread = new ConnectedThread( meuSocket,MainActivity.this);
                         connectedThread.start();
-                        connectedThread.enviar("r");
+                        if(useBluetooth)
+                            connectedThread.enviar("r");
 
                     } catch (IOException erro){
                         conexao = false;
@@ -353,13 +370,11 @@ a
 
                     int cmd_bt = data.getIntExtra("valor", 0);
                     while (speech.getToSpeech().isSpeaking());
-                    if(true)
-                    {
                        //mSpeechRecognizer.startListening(intent);
-                        pessoa = new Pessoa();
-                        recognize = true;
-                        rosto = false;
-                    }
+                    pessoa = new Pessoa();
+                    recognize = true;
+                    rosto = false;
+
                 }
                 ////////comandos manuais/////////
             }
@@ -401,7 +416,8 @@ a
         if(resultado.getParameters() != null && !resultado.getParameters().isEmpty())
         {
             for(final Map.Entry<String, JsonElement> entry : resultado.getParameters().entrySet()){
-                parameterString += "("+entry.getKey()+", "+entry.getValue()+")";
+                ;
+                parameterString += "("+entry.getKey()+", "+entry.getValue() +")";
             }
         }
 
@@ -415,19 +431,31 @@ a
         resposta = resultado.getFulfillment().getSpeech();
         //intent = metadata
 
+        Toast.makeText(getApplicationContext(), "intent: " + metadata.getIntentName(), Toast.LENGTH_LONG).show();
 
 
+        if(!metadata.getIntentName().contains("enigma.I-Net.Closing2")) {
 
-        if(!resposta.contains("soon")) {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+
+                    MainActivity.this.speech.toSpeech(resposta);
+                    while (MainActivity.this.speech.getToSpeech().isSpeaking());
+                    aiService = AIService.getService(MainActivity.this, config);
+                    aiService.setListener(MainActivity.this);
+                    aiService.startListening();
+                }
+            });
+
+        }
+        else
+        {
+
             MainActivity.this.speech.toSpeech(resposta);
             while (MainActivity.this.speech.getToSpeech().isSpeaking());
-            validateOs();
-        }else
-        {
-            connectedThread.enviar("r");
-            MainActivity.this.speech.toSpeech("Good bye.");
-            while (MainActivity.this.speech.getToSpeech().isSpeaking());
-
+            if(useBluetooth)
+                connectedThread.enviar("r");
         }
 
     }
@@ -440,17 +468,18 @@ a
             aiService.stopListening();
             speech.toSpeech("I didn't catch that. Sorry.");
             while(speech.getToSpeech().isSpeaking());
-            connectedThread.enviar("r");
+            if(useBluetooth)
+                connectedThread.enviar("r");
         }
         else{
-            MainActivity.this.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    aiService = AIService.getService(MainActivity.this, config);
-                    aiService.setListener(MainActivity.this);
-                    aiService.startListening();
-                }
-            });
+//            MainActivity.this.runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    aiService = AIService.getService(MainActivity.this, config);
+//                    aiService.setListener(MainActivity.this);
+//                    aiService.startListening();
+//                }
+//            });
         }
 
 
@@ -476,7 +505,7 @@ a
         aiService = AIService.getService(this, config);
         aiService.setListener(this);
 
-        aiService.startListening();
+        //aiService.startListening();
     }
 
     @Override
@@ -533,7 +562,7 @@ a
             if(!faces.empty())
             {
                 Rect rect = faces.toArray()[0];
-
+                int area = rect.height * rect.width;
                 centerx = (rect.width)/2 + rect.x;
                 centery = (rect.height)/2 + rect.y;
                 x = mRgba.width()/3;
@@ -546,7 +575,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("0");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("0");
                                     //rosto = true;
                                 }
                             });
@@ -555,7 +585,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("6");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("6");
                                     //rosto = true;
                                 }
                             });
@@ -564,7 +595,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("3");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("3");
                                     //rosto = true;
                                 }
                             });
@@ -576,7 +608,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("2");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("2");
                                     //rosto = true;
                                 }
                             });
@@ -585,7 +618,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("8");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("8");
                                     //rosto = true;
                                 }
                             });
@@ -594,7 +628,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("5");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("5");
                                     //rosto = true;
                                 }
                             });
@@ -606,7 +641,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("1");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("1");
                                     //rosto = true;
                                 }
                             });
@@ -615,7 +651,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("7");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("7");
                                     //rosto = true;
                                 }
                             });
@@ -624,7 +661,8 @@ a
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    connectedThread.enviar("4");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("4");
                                     //rosto = true;
                                 }
                             });
@@ -639,8 +677,9 @@ a
                 bmp = Bitmap.createBitmap(mCrop.cols(), mCrop.rows(), Bitmap.Config.RGB_565);
                 Utils.matToBitmap(mCrop, bmp);
                 rosto = true;
+
                 try {
-                    response = updateImage(imageToString(bmp));
+                response = updateImage(imageToString(bmp));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -651,6 +690,7 @@ a
                     count = 0;
                     pessoa.setName(response);
                     pessoa.setProfissao("profissao");
+                    //requestExtras.setEntities();
                     dialogFlow_nome();
                     recognize = false;
                     count = 0;
@@ -659,10 +699,7 @@ a
                 }
                 else {
                     pessoa.setName("");
-
                 }
-                //toSpeech.speak("I don't know you... do you want to tell me your name?",
-                     //       TextToSpeech.QUEUE_FLUSH,null,null);
             }
 
             if(!rosto) {
@@ -672,22 +709,28 @@ a
                         if (count % 10 == 0) {
                             switch (count / 10) {
                                 case 1:
-                                    connectedThread.enviar("0");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("0");
                                     break;
                                 case 2:
-                                    connectedThread.enviar("5");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("5");
                                     break;
                                 case 3:
-                                    connectedThread.enviar("5");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("5");
                                     break;
                                 case 4:
-                                    connectedThread.enviar("7");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("7");
                                     break;
                                 case 5:
-                                    connectedThread.enviar("3");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("3");
                                     break;
                                 case 6:
-                                    connectedThread.enviar("3");
+                                    if(useBluetooth)
+                                        connectedThread.enviar("3");
                                     break;
                                 default:
                                     break;
@@ -697,7 +740,8 @@ a
                         speech.toSpeech("I didn't find anyone.");
                         while (speech.getToSpeech().isSpeaking());
                         recognize = false;
-                        connectedThread.enviar("r");
+                        if(useBluetooth)
+                            connectedThread.enviar("r");
                         count = 0;
                     }
                 }
@@ -713,7 +757,8 @@ a
             if(try_recognize > 15)
             {
 
-                connectedThread.enviar("r");
+                if(useBluetooth)
+                    connectedThread.enviar("r");
                 speech.toSpeech("I'm not seeing anyone");
                 while (speech.getToSpeech().isSpeaking());
                 recognize = false;
@@ -789,6 +834,7 @@ a
             aiService = AIService.getService(MainActivity.this, config);
             aiService.setListener(MainActivity.this);
             aiService.startListening();
+
         }
     }
 
@@ -904,9 +950,9 @@ a
     public void onResults(Bundle results) {
         ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         comandoVoz = matches.get(0);
-        if (comandoVoz.contains("hello actor")) {
+        //if (comandoVoz.contains("hello actor")) {
             //dialogFlow();
-        }
+        //}
     }
 
     public void dialogFlow()
@@ -922,14 +968,22 @@ a
             pessoa = new Pessoa();
             recognize = true;
         }
-        else
-            connectedThread.enviar("r");
+        else {
+            if (useBluetooth)
+                connectedThread.enviar("r");
+        }
     }
 
     private void dialogFlow_nome()
     {
-        speech.toSpeech("Hello " + pessoa.getName() + ", nice to see you.");
+        String phrase = randomPhrase();
+
+        phrase = phrase.replace("<Name>", pessoa.getName());
+
+        speech.toSpeech(phrase);
         while(speech.getToSpeech().isSpeaking());
+        if(useBluetooth)
+            connectedThread.enviar("x");
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -938,6 +992,44 @@ a
             }
         });
 
+    }
+
+    private String randomPhrase()
+    {
+        Random rand = new Random();
+        int randNum = rand.nextInt(6);
+//        switch (randNum)
+//        {
+//            case 0:
+//                return "Hallo, I think you are <Name>, nice to meet you. How are you doing?";
+//            case 1:
+//                return "Hallo <Name>, how are you today?";
+//            case 2:
+//                return "Nice to meet you, <Name>, how are you?";
+//            case 3:
+//                return "I'm glad to meet you today, <Name>, how are you doing";
+//            case 4:
+//                return "Very glad to meet you today, <Name>, how are you?";
+//            case 5:
+//                return "Hallo <Name>, I'm very glad to meet you today, how are you?";
+//        }
+
+        switch (randNum)
+        {
+            case 0:
+                return "I'm glad you are here <Name>, how are you doing?";
+            case 1:
+                return "How are you <Name>?";
+            case 2:
+                return "Do you like being here with me now <Name>?";
+            case 3:
+                return "Hi <Name>, I am glad we finally meet, do you feel the same?";
+            case 4:
+                return "Oh, <Name>, I didn't expect you here, are you sure you're in the right place?";
+            case 5:
+                return "Aha! <Name>, you finally showed up, I think you really need this session, don't you?";
+        }
+        return  "Aha! <Name>, you finally showed up, I think you really need this session, don't you?";
     }
 
     @Override

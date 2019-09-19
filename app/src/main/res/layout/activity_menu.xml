@@ -34,16 +34,16 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Conectar"
-        app:layout_constraintBottom_toTopOf="@+id/btnDescobrir"
+        app:layout_constraintBottom_toTopOf="@+id/btnServerIp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/btnDescobrir"
+        android:id="@+id/btnServerIp"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Descobrir"
+        android:text="Change_Server_ip"
         app:layout_constraintBottom_toTopOf="@+id/btnVoz"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -57,6 +57,6 @@
         app:layout_constraintBottom_toTopOf="@+id/textViewMenu"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnDescobrir" />
+        app:layout_constraintTop_toBottomOf="@+id/btnServerIp" />
 
 </android.support.constraint.ConstraintLayout>
