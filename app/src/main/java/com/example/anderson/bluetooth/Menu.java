@@ -15,7 +15,7 @@ import java.io.IOException;
 
 public class Menu extends AppCompatActivity {
 
-    private Button btnConexao, btnDescobrir, openMic;
+    private Button btnConexao, btnServer, openMic;
     //Activity activity = MainActivity. context;
 
     @Override
@@ -24,7 +24,7 @@ public class Menu extends AppCompatActivity {
         setContentView(R.layout.activity_menu);
 
         btnConexao = (Button)findViewById(R.id.btnConexao);
-        btnDescobrir = (Button)findViewById(R.id.btnDescobrir);
+        btnServer = (Button)findViewById(R.id.btnServerIp);
         openMic = (Button)findViewById(R.id.btnVoz);
 
         btnConexao.setOnClickListener(new View.OnClickListener() {
@@ -36,6 +36,13 @@ public class Menu extends AppCompatActivity {
                   finish();
               }
           });
+
+        btnServer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
 
 
 //            }

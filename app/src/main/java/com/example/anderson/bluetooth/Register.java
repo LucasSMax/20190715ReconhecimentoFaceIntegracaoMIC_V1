@@ -203,8 +203,6 @@ public class Register extends AppCompatActivity implements CameraBridgeViewBase.
         });
     }
 
-
-
     @Override
     protected void onPause() {
         super.onPause();
